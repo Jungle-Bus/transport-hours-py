@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import re
 
 class OpeningHoursParser:
@@ -8,7 +10,7 @@ class OpeningHoursParser:
 	def __init__(self, value):
 		"""
 		Creates the OpeningHoursParser Object with OSM opening_hours string
-		@param {string} value The opening_hours=* value
+		# param value (string): The opening_hours=* value
 		"""
 		self.openingHours = {}
 		self._parse(value)
@@ -20,7 +22,7 @@ class OpeningHoursParser:
 	def getTable(self):
 		"""
 		Get the parsed value as a table
-		@return {Object} The hours, as { day: [ hours ] }
+		# return (dict): The hours, as { day: [ hours ] }
 		"""
 		return self.openingHours
 

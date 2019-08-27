@@ -1,22 +1,71 @@
+# -*- coding: utf-8 -*-
+
 import re
 import functools
-from OpeningHoursParser import OpeningHoursParser
+from .openinghoursparser import OpeningHoursParser
 
 TAG_UNSET = "unset"
 TAG_INVALID = "invalid"
 
-class TransportHours:
+class Main:
 	"""
-	TransportHours is the main class of the library.
+	Main class of the library.
 	It contains all main functions which can help managing public transport hours.
 	"""
 
+	def tagsToGtfs(self, tags):
+		"""
+		Convert OpenStreetMap tags into a GTFS-like format (list of dict having format { eachWeekDay: True/False, start_time: string, end_time: string, headway: int }.
+		Parsed tags are : interval=\*, opening_hours=\* and interval:conditional=\*
+
+		# param tags (dict): OpenStreetMap tags
+		# return dict[]: list of dictionaries, each one representing a line of GTFS hours CSV file
+		"""
+		hours = self.tagsToHoursObject(tags)
+
+		if hours['allComputedIntervals'] == TAG_INVALID:
+			raise Exception("OSM tags describing route hours are probably invalid, and can't be read")
+		elif hours['allComputedIntervals'] == TAG_UNSET:
+			return []
+		else:
+			result = []
+
+			daysId = [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ]
+
+			# Read each period(days, intervals)
+			for period in sorted(hours['allComputedIntervals'], key=lambda x: daysId.index(x['days'][0])):
+				periodGtfs = {}
+
+				# Interpret days (we ignore ph as not used by GTFS)
+				days = [ d for d in period['days'] if d != "ph" ]
+				if len(days) > 0:
+					periodGtfs['monday'] = "mo" in days
+					periodGtfs['tuesday'] = "tu" in days
+					periodGtfs['wednesday'] = "we" in days
+					periodGtfs['thursday'] = "th" in days
+					periodGtfs['friday'] = "fr" in days
+					periodGtfs['saturday'] = "sa" in days
+					periodGtfs['sunday'] = "su" in days
+
+					# Interpret intervals
+					for hourRange in sorted(period['intervals'].keys()):
+						periodHourGtfs = dict(periodGtfs)
+						periodHourGtfs['start_time'] = hourRange.split("-")[0] + ":00"
+						periodHourGtfs['end_time'] = hourRange.split("-")[1] + ":00"
+						periodHourGtfs['headway'] = period['intervals'][hourRange] * 60
+
+						# Add to result
+						result.append(periodHourGtfs)
+
+			return result
+
 	def tagsToHoursObject(self, tags):
 		"""
-		Converts OpenStreetMap tags into a ready-to-use JS object representing the hours of the public transport line.
+		Converts OpenStreetMap tags into a ready-to-use object representing the hours of the public transport line.
 		Parsed tags are : interval=\*, opening_hours=\* and interval:conditional=\*
-		@param {Object} tags The list of tags from OpenStreetMap
-		@return {Object} The hours of the line, with structure { opens: {@link #gettable|opening hours table}, defaultInterval: minutes (int), otherIntervals: {@link #intervalconditionalstringtoobject|interval rules object}, otherIntervalsByDays: list of interval by days (structure: { days: string[], intervals: { hoursRange: interval } }), allComputedIntervals: same as otherIntervalsByDays but taking also default interval and opening_hours }. Each field can also have value "unset" if no tag is defined, or "invalid" if tag can't be read.
+
+		# param tags (dict): The list of tags from OpenStreetMap
+		# return dict: The hours of the line, with structure { opens: object in format given by #OpeningHoursParser.gettable(), defaultInterval: minutes (int), otherIntervals: interval rules object, otherIntervalsByDays: list of interval by days (structure: { days: string[], intervals: { hoursRange: interval } }), allComputedIntervals: same as otherIntervalsByDays but taking also default interval and opening_hours }. Each field can also have value "unset" if no tag is defined, or "invalid" if tag can't be read.
 		"""
 
 		# Read opening_hours
@@ -62,17 +111,18 @@ class TransportHours:
 	def intervalConditionalStringToObject(self, intervalConditional):
 		"""
 		Reads an interval:conditional=* tag from OpenStreetMap, and converts it into a JS object.
-		@param {string} intervalConditional The {@link https://wiki.openstreetmap.org/wiki/Key:interval|interval:conditional} tag
-		@return {Object[]} A list of rules, each having structure { interval: minutes (int), applies: {@link #gettable|opening hours table} }
+
+		# param intervalConditional (string): The {@link https://wiki.openstreetmap.org/wiki/Key:interval|interval:conditional} tag
+		# return (dict[]): A list of rules, each having structure { interval: minutes (int), applies: {@link #gettable|opening hours table} }
 		"""
 		return [ self._readSingleIntervalConditionalString(p) for p in self._splitMultipleIntervalConditionalString(intervalConditional) ]
 
 	def _splitMultipleIntervalConditionalString(self, intervalConditional):
 		"""
 		Splits several conditional interval rules being separated by semicolon.
-		@param {string} intervalConditional
-		@return {string[]} List of single rules
-		@private
+
+		# param intervalConditional (string)
+		# return (string[]): List of single rules
 		"""
 		if "(" in intervalConditional:
 			semicolons = [i for i, ltr in enumerate(intervalConditional) if ltr == ";"]
@@ -98,9 +148,9 @@ class TransportHours:
 		"""
 		Parses a single conditional interval value (for example : `15 @ (08:00-15:00)`).
 		This should be used as many times as you have different rules (separated by semicolon).
-		@param {string} intervalConditional
-		@return {Object} Object with structure { interval: minutes (int), applies: {@link #gettable|opening hours table} }
-		@private
+
+		# param intervalConditional (string)
+		# return (dict): dictionary with structure { interval: minutes (int), applies: OpeningHoursParser.gettable() structure} }
 		"""
 		result = {}
 		parts = [ p.strip() for p in intervalConditional.split("@") ]
@@ -122,7 +172,6 @@ class TransportHours:
 	def _intervalConditionObjectToIntervalByDays(self, intervalConditionalObject):
 		"""
 		Transforms an object containing the conditional intervals into an object structured day by day.
-		@private
 		"""
 		result = []
 		itvByDay = {}
@@ -158,7 +207,6 @@ class TransportHours:
 	def _computeAllIntervals(self, openingHours, interval, intervalCondByDay):
 		"""
 		Reads all information, and generates a merged calendar of all intervals.
-		@private
 		"""
 
 		# If opening hours or interval is invalid, returns interval conditional as is
@@ -218,9 +266,7 @@ class TransportHours:
 	def _mergeIntervalsSingleDay(self, hours, interval, condIntervals):
 		"""
 		Add default interval within opening hours to conditional intervals
-		@private
 		"""
-		# Was: hourRangeToArr = hr => hr.map(h => h.split("-"))
 		hourRangeToArr = lambda hr: [ h.split("-") for h in hr ]
 		ohHours = hourRangeToArr(hours)
 		condHours = hourRangeToArr(condIntervals)

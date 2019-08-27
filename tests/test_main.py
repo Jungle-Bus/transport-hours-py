@@ -1,7 +1,94 @@
-import unittest
-from TransportHours import TransportHours
+# -*- coding: utf-8 -*-
 
-class TransportHoursTest(unittest.TestCase):
+from .context import transporthours
+from transporthours.main import Main
+import unittest
+
+class MainTest(unittest.TestCase):
+	#
+	# tagsToGtfs
+	#
+	def test_tagsToGtfs_works_singlerange(self):
+		tags = {
+			"type": "route",
+			"route": "bus",
+			"name": "Ligne 42",
+			"opening_hours": "Mo-Fr 05:00-22:00",
+			"interval": "00:30",
+			"interval:conditional": "00:10 @ (Mo-Fr 07:00-09:30, 16:30-19:00)"
+		}
+		result = Main().tagsToGtfs(tags)
+		expected = [
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "05:00:00", "end_time": "07:00:00", "headway": 1800 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "07:00:00", "end_time": "09:30:00", "headway": 600 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "09:30:00", "end_time": "16:30:00", "headway": 1800 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "16:30:00", "end_time": "19:00:00", "headway": 600 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "19:00:00", "end_time": "22:00:00", "headway": 1800 }
+		]
+		self.assertEqual(result, expected)
+
+	def test_tagsToGtfs_works_multiranges(self):
+		tags = {
+			"type": "route",
+			"route": "bus",
+			"name": "Ligne 42",
+			"opening_hours": "Mo-Fr 05:00-22:00; Sa 07:00-23:00",
+			"interval": "00:10",
+			"interval:conditional": "5 @ (Mo,Fr 08:00-10:00,16:30-18:30); 00:06 @ (Sa 11:00-13:00)"
+		}
+		result = Main().tagsToGtfs(tags)
+		expected = [
+			{ "monday": True, "tuesday": False, "wednesday": False, "thursday": False, "friday": True, "saturday": False, "sunday": False, "start_time": "05:00:00", "end_time": "08:00:00", "headway": 600 },
+			{ "monday": True, "tuesday": False, "wednesday": False, "thursday": False, "friday": True, "saturday": False, "sunday": False, "start_time": "08:00:00", "end_time": "10:00:00", "headway": 300 },
+			{ "monday": True, "tuesday": False, "wednesday": False, "thursday": False, "friday": True, "saturday": False, "sunday": False, "start_time": "10:00:00", "end_time": "16:30:00", "headway": 600 },
+			{ "monday": True, "tuesday": False, "wednesday": False, "thursday": False, "friday": True, "saturday": False, "sunday": False, "start_time": "16:30:00", "end_time": "18:30:00", "headway": 300 },
+			{ "monday": True, "tuesday": False, "wednesday": False, "thursday": False, "friday": True, "saturday": False, "sunday": False, "start_time": "18:30:00", "end_time": "22:00:00", "headway": 600 },
+			{ "monday": False, "tuesday": True, "wednesday": True, "thursday": True, "friday": False, "saturday": False, "sunday": False, "start_time": "05:00:00", "end_time": "22:00:00", "headway": 600 },
+			{ "monday": False, "tuesday": False, "wednesday": False, "thursday": False, "friday": False, "saturday": True, "sunday": False, "start_time": "07:00:00", "end_time": "11:00:00", "headway": 600 },
+			{ "monday": False, "tuesday": False, "wednesday": False, "thursday": False, "friday": False, "saturday": True, "sunday": False, "start_time": "11:00:00", "end_time": "13:00:00", "headway": 360 },
+			{ "monday": False, "tuesday": False, "wednesday": False, "thursday": False, "friday": False, "saturday": True, "sunday": False, "start_time": "13:00:00", "end_time": "23:00:00", "headway": 600 }
+		]
+		self.assertEqual(result, expected)
+
+	def test_tagsToGtfs_ignore_ph(self):
+		tags = {
+			"type": "route",
+			"route": "bus",
+			"name": "Ligne 42",
+			"opening_hours": "Mo-Fr,PH 05:00-22:00",
+			"interval": "00:30",
+			"interval:conditional": "00:10 @ (Mo-Fr 07:00-09:30, 16:30-19:00); 00:30 @ (PH 05:00-22:00)"
+		}
+		result = Main().tagsToGtfs(tags)
+		expected = [
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "05:00:00", "end_time": "07:00:00", "headway": 1800 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "07:00:00", "end_time": "09:30:00", "headway": 600 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "09:30:00", "end_time": "16:30:00", "headway": 1800 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "16:30:00", "end_time": "19:00:00", "headway": 600 },
+			{ "monday": True, "tuesday": True, "wednesday": True, "thursday": True, "friday": True, "saturday": False, "sunday": False, "start_time": "19:00:00", "end_time": "22:00:00", "headway": 1800 }
+		]
+		self.assertEqual(result, expected)
+
+	def test_tagsToGtfs_empty_if_unset(self):
+		tags = {
+			"type": "route",
+			"route": "bus",
+			"name": "Ligne 42"
+		}
+		result = Main().tagsToGtfs(tags)
+		expected = []
+		self.assertEqual(result, expected)
+
+	def test_tagsToGtfs_error_if_invalid(self):
+		tags = {
+			"type": "route",
+			"route": "bus",
+			"name": "Ligne 42",
+			"opening_hours": "this is broken",
+			"interval": "00:10"
+		}
+		self.assertRaises(Exception, Main().tagsToGtfs, tags)
+
 	#
 	# tagsToHoursObject
 	#
@@ -14,7 +101,7 @@ class TransportHoursTest(unittest.TestCase):
 			"interval": "00:30",
 			"interval:conditional": "00:10 @ (Mo-Fr 07:00-09:30, 16:30-19:00)"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": {
 				"mo": ["05:00-22:00"],
@@ -59,7 +146,7 @@ class TransportHoursTest(unittest.TestCase):
 			"opening_hours": "Mo-Fr 05:00-22:00",
 			"interval": "00:30"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": {
 				"mo": ["05:00-22:00"],
@@ -87,7 +174,7 @@ class TransportHoursTest(unittest.TestCase):
 			"name": "Ligne 42",
 			"interval": "00:30"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": "unset",
 			"defaultInterval": 30,
@@ -105,7 +192,7 @@ class TransportHoursTest(unittest.TestCase):
 			"route": "bus",
 			"name": "Ligne 42"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": "unset",
 			"defaultInterval": "unset",
@@ -123,7 +210,7 @@ class TransportHoursTest(unittest.TestCase):
 			"opening_hours": "what ?",
 			"interval": "00:30"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": "invalid",
 			"defaultInterval": 30,
@@ -140,7 +227,7 @@ class TransportHoursTest(unittest.TestCase):
 			"name": "Ligne 42",
 			"interval": "12 minutes is so long to wait for a bus..."
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": "unset",
 			"defaultInterval": "invalid",
@@ -158,7 +245,7 @@ class TransportHoursTest(unittest.TestCase):
 			"interval": "00:30",
 			"interval:conditional": "12 @ random hours"
 		}
-		result = TransportHours().tagsToHoursObject(tags)
+		result = Main().tagsToHoursObject(tags)
 		expected = {
 			"opens": "unset",
 			"defaultInterval": 30,
@@ -173,7 +260,7 @@ class TransportHoursTest(unittest.TestCase):
 	#
 	def test_intervalConditionalStringToObject_handles_standard_tag(self):
 		intervalCond = "00:05 @ (Mo-Fr 07:00-10:00); 00:10 @ (Mo-Fr 16:30-19:00); 00:30 @ (Mo-Su 22:00-05:00)"
-		result = TransportHours().intervalConditionalStringToObject(intervalCond)
+		result = Main().intervalConditionalStringToObject(intervalCond)
 		expected = [
 			{
 				"interval": 5,
@@ -223,13 +310,13 @@ class TransportHoursTest(unittest.TestCase):
 
 	def test_splitMultipleIntervalConditionalString_handles_string_nosemicolons_in_oh_part(self):
 		intervalCond = "00:05 @ (Mo-Fr 07:00-10:00); 00:05 @ (Mo-Fr 16:30-19:00); 00:30 @ (Mo-Su 22:00-05:00)"
-		result = TransportHours()._splitMultipleIntervalConditionalString(intervalCond)
+		result = Main()._splitMultipleIntervalConditionalString(intervalCond)
 		expected = ["00:05 @ (Mo-Fr 07:00-10:00)","00:05 @ (Mo-Fr 16:30-19:00)","00:30 @ (Mo-Su 22:00-05:00)"]
 		self.assertEqual(result, expected)
 
 	def test_splitMultipleIntervalConditionalString_handles_string_withsemicolons_in_ohpart(self):
 		intervalCond = "00:05 @ (Mo-Fr 07:00-10:00 ; Su 16:30-19:00) ; 00:30 @ (Mo-Su 22:00-05:00)"
-		result = TransportHours()._splitMultipleIntervalConditionalString(intervalCond)
+		result = Main()._splitMultipleIntervalConditionalString(intervalCond)
 		expected = ["00:05 @ (Mo-Fr 07:00-10:00 ; Su 16:30-19:00)","00:30 @ (Mo-Su 22:00-05:00)"]
 		self.assertEqual(result, expected)
 
@@ -239,7 +326,7 @@ class TransportHoursTest(unittest.TestCase):
 
 	def test_readSingleIntervalConditionalString_handles_basic(self):
 		intervalCond = "00:10 @ (Sa-Su 06:00-22:00)"
-		result = TransportHours()._readSingleIntervalConditionalString(intervalCond)
+		result = Main()._readSingleIntervalConditionalString(intervalCond)
 		expected = {
 			"interval": 10,
 			"applies": {
@@ -257,7 +344,7 @@ class TransportHoursTest(unittest.TestCase):
 
 	def test_readSingleIntervalConditionalString_handles_oh_without_quotes(self):
 		intervalCond = "15 @ Mo 06:00-22:00"
-		result = TransportHours()._readSingleIntervalConditionalString(intervalCond)
+		result = Main()._readSingleIntervalConditionalString(intervalCond)
 		expected = {
 			"interval": 15,
 			"applies": {
@@ -275,7 +362,7 @@ class TransportHoursTest(unittest.TestCase):
 
 	def test_readSingleIntervalConditionalString_handles_nospaces(self):
 		intervalCond = "15@Mo 06:00-22:00"
-		result = TransportHours()._readSingleIntervalConditionalString(intervalCond)
+		result = Main()._readSingleIntervalConditionalString(intervalCond)
 		expected = {
 			"interval": 15,
 			"applies": {
@@ -300,7 +387,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "interval": 10, "applies": { "mo": [ "00:00-01:00" ], "tu": [ "01:00-02:00" ], "we": [ "02:00-03:00" ], "th": [], "fr": [], "sa": [], "su": [], "ph": [] } },
 			{ "interval": 20, "applies": { "mo": [], "tu": [], "we": [], "th": [], "fr": [], "sa": [ "05:00-07:00" ], "su": [], "ph": [] } }
 		]
-		result = TransportHours()._intervalConditionObjectToIntervalByDays(intvObj)
+		result = Main()._intervalConditionObjectToIntervalByDays(intvObj)
 		expected = [
 			{ "days": [ "mo" ], "intervals": { "00:00-01:00": 10 } },
 			{ "days": [ "tu" ], "intervals": { "01:00-02:00": 10 } },
@@ -314,7 +401,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "interval": 10, "applies": { "mo": [ "00:00-01:00" ], "tu": [ "00:00-01:00" ], "we": [ "00:00-01:00" ], "th": [], "fr": [], "sa": [], "su": [], "ph": [] } },
 			{ "interval": 20, "applies": { "mo": [], "tu": [], "we": [], "th": [], "fr": [], "sa": [ "05:00-07:00" ], "su": [], "ph": [] } }
 		]
-		result = TransportHours()._intervalConditionObjectToIntervalByDays(intvObj)
+		result = Main()._intervalConditionObjectToIntervalByDays(intvObj)
 		expected = [
 			{ "days": [ "mo", "tu", "we" ], "intervals": { "00:00-01:00": 10 } },
 			{ "days": [ "sa" ], "intervals": { "05:00-07:00": 20 } }
@@ -326,7 +413,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "interval": 10, "applies": { "mo": [ "00:00-01:00" ], "tu": [ "00:00-01:00", "05:00-07:00" ], "we": [ "00:00-01:00" ], "th": [], "fr": [], "sa": [], "su": [], "ph": [] } },
 			{ "interval": 20, "applies": { "mo": [], "tu": [], "we": [], "th": [], "fr": [], "sa": [ "05:00-07:00" ], "su": [], "ph": [] } }
 		]
-		result = TransportHours()._intervalConditionObjectToIntervalByDays(intvObj)
+		result = Main()._intervalConditionObjectToIntervalByDays(intvObj)
 		expected = [
 			{ "days": [ "mo", "we" ], "intervals": { "00:00-01:00": 10 } },
 			{ "days": [ "tu" ], "intervals": { "00:00-01:00": 10, "05:00-07:00": 10 } },
@@ -354,7 +441,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-08:00": 10, "08:00-10:00": 5, "10:00-16:30": 10, "16:30-18:30": 5, "18:30-22:00": 10 } },
@@ -379,7 +466,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "fr" ], "intervals": { "05:00-08:00": 10, "08:00-10:00": 5, "10:00-16:30": 10, "16:30-18:30": 5, "18:30-22:00": 10 } },
@@ -405,7 +492,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "we", "fr" ], "intervals": { "05:00-08:00": 10, "08:00-10:00": 5, "10:00-16:30": 10, "16:30-18:30": 5, "18:30-22:00": 10 } },
@@ -428,7 +515,7 @@ class TransportHoursTest(unittest.TestCase):
 			"ph": []
 		}
 		intervalCondByDay = "unset"
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-22:00": 10 } },
@@ -450,7 +537,7 @@ class TransportHoursTest(unittest.TestCase):
 			"ph": []
 		}
 		intervalCondByDay = "invalid"
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = "invalid"
 
@@ -463,7 +550,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "00:00-08:00": 10, "08:00-10:00": 5, "10:00-16:30": 10, "16:30-18:30": 5, "18:30-24:00": 10 } },
@@ -480,7 +567,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = intervalCondByDay
 
@@ -502,7 +589,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "08:00-10:00": 5, "16:30-18:30": 5 } },
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = intervalCondByDay
 
@@ -525,7 +612,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "sa" ], "intervals": { "11:00-13:00": 6 } }
 		]
 
-		self.assertRaises(Exception, TransportHours()._computeAllIntervals, openingHours, interval, intervalCondByDay)
+		self.assertRaises(Exception, Main()._computeAllIntervals, openingHours, interval, intervalCondByDay)
 
 	def test_computeAllIntervals_handles_condinterval_startend_overlaps_oh(self):
 		interval = 30
@@ -543,7 +630,7 @@ class TransportHoursTest(unittest.TestCase):
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "16:00-20:00": 15 } },
 			{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "20:00-22:00": 60 } }
 		]
-		result = TransportHours()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
 
 		expected = [
 			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 30 } },
@@ -560,7 +647,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 10
 		condIntervals = { "07:00-09:30": 5, "18:00-20:25": 4 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "03:00-07:00": 10, "07:00-09:30": 5, "09:30-18:00": 10, "18:00-20:25": 4, "20:25-22:30": 10 }
 
 		self.assertEqual(result, expected)
@@ -570,7 +657,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 10
 		condIntervals = { "07:00-09:30": 5, "18:00-20:25": 4 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "03:00-07:00": 10, "07:00-09:30": 5, "09:30-12:00": 10, "15:00-18:00": 10, "18:00-20:25": 4, "20:25-23:50": 10 }
 
 		self.assertEqual(result, expected)
@@ -580,21 +667,21 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 10
 		condIntervals = { "07:00-09:30": 5, "18:00-20:25": 4 }
 
-		self.assertRaises(Exception, TransportHours()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
+		self.assertRaises(Exception, Main()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
 
 	def test_mergeIntervalsSingleDay_fails_multiple_hour_ranges_notcovering_condinterval(self):
 		ohRanges = ["03:00-12:00", "15:00-20:00"]
 		interval = 10
 		condIntervals = { "01:00-04:00": 12, "11:30-12:30": 5, "14:00-16:00": 4, "19:00-22:00": 3 }
 
-		self.assertRaises(Exception, TransportHours()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
+		self.assertRaises(Exception, Main()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
 
 	def test_mergeIntervalsSingleDay_works_oh_equals_condintervals(self):
 		ohRanges = ["07:00-09:30", "18:00-20:25"]
 		interval = 10
 		condIntervals = { "07:00-09:30": 5, "18:00-20:25": 4 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = condIntervals
 
 		self.assertEqual(result, expected)
@@ -604,7 +691,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 30
 		condIntervals = { "05:00-09:00": 15, "16:00-20:00": 15 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 30 }
 
 		self.assertEqual(result, expected)
@@ -614,7 +701,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 30
 		condIntervals = { "05:30-09:00": 15, "16:00-22:00": 15 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "05:00-05:30": 30, "05:30-09:00": 15, "09:00-16:00": 30, "16:00-22:00": 15 }
 
 		self.assertEqual(result, expected)
@@ -624,7 +711,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 30
 		condIntervals = { "05:00-09:00": 15, "16:00-22:00": 15 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-22:00": 15 }
 
 		self.assertEqual(result, expected)
@@ -634,7 +721,7 @@ class TransportHoursTest(unittest.TestCase):
 		interval = 30
 		condIntervals = { "05:00-09:00": 15 }
 
-		result = TransportHours()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "05:00-09:00": 15, "09:00-22:00": 30 }
 
 		self.assertEqual(result, expected)
@@ -644,62 +731,62 @@ class TransportHoursTest(unittest.TestCase):
 	#
 	def test_intervalStringToMinutes_hhmmss1(self):
 		interval = "01:00:00"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 60
 		self.assertEqual(result, expected)
 
 	def test_intervalStringToMinutes_hhmmss2(self):
 		interval = "01:30:00"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 90
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_hhmmss3(self):
 		interval = "02:45:30"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 165.5
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_hhmm1(self):
 		interval = "01:00"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 60
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_hhmm2(self):
 		interval = "03:12"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 192
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_mm1(self):
 		interval = "15"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 15
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_mm2(self):
 		interval = "135"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 135
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_hmm(self):
 		interval = "3:10"
-		result = TransportHours().intervalStringToMinutes(interval)
+		result = Main().intervalStringToMinutes(interval)
 		expected = 190
 		self.assertEqual(result, expected)
 
 
 	def test_intervalStringToMinutes_invalid(self):
 		interval = "12 minutes"
-		self.assertRaises(Exception, TransportHours().intervalStringToMinutes, interval)
+		self.assertRaises(Exception, Main().intervalStringToMinutes, interval)
 
 
 if __name__ == '__main__':

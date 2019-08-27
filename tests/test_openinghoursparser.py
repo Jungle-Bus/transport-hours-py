@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
+
+from .context import transporthours
+from transporthours.openinghoursparser import OpeningHoursParser
 import unittest
-from OpeningHoursParser import OpeningHoursParser
 
 class OpeningHoursParserTest(unittest.TestCase):
 	#
