@@ -335,7 +335,7 @@ class Main:
 		# hh:mm:ss
 		if re.search("^\d{1,2}:\d{2}:\d{2}$", interval):
 			parts = [ int(t) for t in interval.split(":") ]
-			return parts[0] * 60 + parts[1] + parts[2] / 60
+			return parts[0] * 60 + parts[1] + parts[2] / 60.0
 
 		# hh:mm
 		elif re.search("^\d{1,2}:\d{2}$", interval):
