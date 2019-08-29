@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from .context import transporthours
 from transporthours.main import Main
 import unittest
 
