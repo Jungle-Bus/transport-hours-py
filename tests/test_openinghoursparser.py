@@ -23,6 +23,38 @@ class OpeningHoursParserTest(unittest.TestCase):
 		}
 		self.assertEqual(result, expected)
 
+	def test_constructor_handles_ph_off(self):
+		value = "10:00-12:00; PH off";
+		oh = OpeningHoursParser(value)
+		result = oh.getTable()
+		expected = {
+			"mo": ["10:00-12:00"],
+			"tu": ["10:00-12:00"],
+			"we": ["10:00-12:00"],
+			"th": ["10:00-12:00"],
+			"fr": ["10:00-12:00"],
+			"sa": ["10:00-12:00"],
+			"su": ["10:00-12:00"],
+			"ph": []
+		}
+		self.assertEqual(result, expected)
+
+	def test_constructor_handles_full_week_ph(self):
+		value = "Mo-Su,PH 10:00-12:00"
+		oh = OpeningHoursParser(value)
+		result = oh.getTable()
+		expected = {
+			"mo": ["10:00-12:00"],
+			"tu": ["10:00-12:00"],
+			"we": ["10:00-12:00"],
+			"th": ["10:00-12:00"],
+			"fr": ["10:00-12:00"],
+			"sa": ["10:00-12:00"],
+			"su": ["10:00-12:00"],
+			"ph": ["10:00-12:00"]
+		}
+		self.assertEqual(result, expected)
+
 	def test_constructor_handles_day_hours(self):
 		value = "Mo 10:00-12:00"
 		oh = OpeningHoursParser(value)

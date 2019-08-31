@@ -6,6 +6,7 @@ from .openinghoursparser import OpeningHoursParser
 
 TAG_UNSET = "unset"
 TAG_INVALID = "invalid"
+DAYS_ID = [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ]
 
 class Main:
 	"""
@@ -195,6 +196,12 @@ class Main:
 				else:
 					result.append({ "days": [ day ], "intervals": intervals })
 
+		# Sort by days
+		for itv in result:
+			itv['days'].sort(key = lambda x: DAYS_ID.index(x))
+
+		result.sort(key = lambda x: DAYS_ID.index(x['days'][0]))
+
 		return result
 
 	def _flatList(self, myList):
@@ -255,13 +262,38 @@ class Main:
 				i += 1
 
 			# Sort results by day
-			daysId = [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ]
 			for r in result:
-				r['days'].sort(key=lambda x: daysId.index(x))
+				r['days'].sort(key=lambda x: DAYS_ID.index(x))
 
-			result.sort(key=lambda x: daysId.index(x['days'][0]))
+			result.sort(key=lambda x: DAYS_ID.index(x['days'][0]))
 
 			return result
+
+	def _hourRangeWithin(self, wider, smaller):
+		"""
+		Check if an hour range is contained in another one
+		"""
+		if wider == smaller:
+			return True
+		else:
+			# During day
+			if wider[0] <= wider[1]:
+				if smaller[0] > smaller[1]:
+					return False
+				else:
+					return wider[0] <= smaller[0] and smaller[0] < wider[1] and wider[0] < smaller[1] and smaller[1] <= wider[1]
+			# Over midnight
+			else:
+				# Either before or after midnight
+				if smaller[0] <= smaller[1]:
+					# All after wider start
+					if wider[0] <= smaller[0] and wider[0] <= smaller[1]:
+						return True
+					else:
+						return False
+				# Over midnight
+				else:
+					return wider[0] <= smaller[0] and smaller[0] <= "24:00" and "00:00" <= smaller[1] and smaller[1] <= wider[1]
 
 	def _mergeIntervalsSingleDay(self, hours, interval, condIntervals):
 		"""
@@ -279,7 +311,7 @@ class Main:
 			foundOhHours = False
 
 			for ohh in ohHours:
-				if ch[0] >= ohh[0] and ch[1] <= ohh[1]:
+				if self._hourRangeWithin(ohh, ch):
 					foundOhHours = True
 					break
 
@@ -291,29 +323,40 @@ class Main:
 		if len(invalidCondHours) > 0:
 			raise Exception("Conditional intervals are not contained in opening hours")
 
+		# Check conditional hours are not overlapping
+		condHours.sort(key = lambda x: self.intervalStringToMinutes(x[0]))
+
+		for i in range(len(condHours)):
+			ch = condHours[i]
+			if i > 0:
+				check = ch[0] if ch[0] < ch[1] else ch[1]
+				if condHours[i-1][1] > check:
+					raise Exception("Conditional intervals are not exclusive (they overlaps)")
+
 		ohHoursWithoutConds = []
 
 		for ohh in ohHours:
-			thisHours = []
+			holes = []
+			thisCondHours = [ ch for ch in condHours if self._hourRangeWithin(ohh, ch) ]
 
-			if len(condHours) == 0 or ohh[0] != condHours[0][0]:
-				thisHours.append(ohh[0])
+			for i in range(len(thisCondHours)):
+				ch = thisCondHours[i]
+				isFirst = i == 0
+				isLast = i == len(thisCondHours) - 1
 
-			for ch in condHours:
-				if ch[0] > ohh[0] and ch[0] < ohh[1]:
-					thisHours.append(ch[0])
-				if ch[1] > ohh[0] and ch[1] < ohh[1]:
-					thisHours.append(ch[1])
+				if isFirst and ohh[0] < ch[0]:
+					holes.append(ohh[0])
+					holes.append(ch[0])
 
-			if len(condHours) == 0 or ohh[1] != condHours[len(condHours)-1][1]:
-				thisHours.append(ohh[1])
+				if not isFirst and thisCondHours[i-1][1] < ch[0]:
+					holes.append(thisCondHours[i-1][1])
+					holes.append(ch[0])
 
-			ohToAdd = []
-			for i in range(len(thisHours)):
-				if i % 2 == 1:
-					ohToAdd.append(thisHours[i-1] + "-" + thisHours[i])
+				if isLast and ch[1] < ohh[1]:
+					holes.append(ch[1])
+					holes.append(ohh[1])
 
-			ohHoursWithoutConds = ohHoursWithoutConds + ohToAdd
+			ohHoursWithoutConds += [ holes[i-1]+"-"+holes[i] for i in range(len(holes)) if i % 2 == 1 ]
 
 		result = {}
 		for h in ohHoursWithoutConds:

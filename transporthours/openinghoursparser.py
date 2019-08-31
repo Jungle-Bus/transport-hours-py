@@ -92,7 +92,7 @@ class OpeningHoursParser:
 				if i == 0 and len(days) == 0:
 					days = self._parseDays("Mo-Su,PH")
 				if segment == "off":
-					times = []
+					times = "off"
 				else:
 					times.append(self._cleanTime(segment))
 
@@ -107,8 +107,10 @@ class OpeningHoursParser:
 			else:
 				tempData[day] = times
 
-		if len(days) > 0 and len(times) == 0:
-			for day in days:
+		for day in days:
+			if times == "off":
+				tempData[day] = []
+			elif len(times) == 0:
 				tempData[day] = ["00:00-24:00"]
 
 		# apply data to main obj
