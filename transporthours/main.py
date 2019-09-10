@@ -111,7 +111,7 @@ class Main:
 
 	def intervalConditionalStringToObject(self, intervalConditional):
 		"""
-		Reads an interval:conditional=* tag from OpenStreetMap, and converts it into a JS object.
+		Reads an interval:conditional=* tag from OpenStreetMap, and converts it into a dict.
 
 		# param intervalConditional (string): The {@link https://wiki.openstreetmap.org/wiki/Key:interval|interval:conditional} tag
 		# return (dict[]): A list of rules, each having structure { interval: minutes (int), applies: {@link #gettable|opening hours table} }
@@ -295,6 +295,34 @@ class Main:
 				else:
 					return wider[0] <= smaller[0] and smaller[0] <= "24:00" and "00:00" <= smaller[1] and smaller[1] <= wider[1]
 
+	def _hourRangeOverlap(self, first_range, second_range):
+		"""
+		Check if an hour range overlap another one
+		"""
+		if first_range == second_range:
+			return False
+		else:
+			if not first_range[0] <= second_range[0]:
+				_ = first_range
+				first_range = second_range
+				second_range = _
+
+			# First one is during day
+			if first_range[0] <= first_range[1]:
+				return second_range[0] < first_range[1]
+
+			# First one is over midnight
+			else:
+				# Second one is during day (Either before or after midnight)
+				if second_range[0] <= second_range[1]:
+					if first_range[0] <= second_range[0] and first_range[0] <= second_range[1]:
+						return True
+					else:
+						return False
+				# Second one is over midnight
+				else:
+					return True
+
 	def _mergeIntervalsSingleDay(self, hours, interval, condIntervals):
 		"""
 		Add default interval within opening hours to conditional intervals
@@ -304,34 +332,16 @@ class Main:
 		condHours = hourRangeToArr(condIntervals)
 
 		# Check all conditional hours belong into opening hours
-		invalidCondHours = list(condHours)
-		i = 0
-		while i < len(invalidCondHours):
-			ch = invalidCondHours[i]
-			foundOhHours = False
-
-			for ohh in ohHours:
-				if self._hourRangeWithin(ohh, ch):
-					foundOhHours = True
-					break
-
-			if foundOhHours:
-				del invalidCondHours[i]
-			else:
-				i += 1
-
-		if len(invalidCondHours) > 0:
-			raise Exception("Conditional intervals are not contained in opening hours")
+		for condHours_elem in condHours:
+				if not any([ohh for ohh in ohHours if self._hourRangeWithin(ohh, condHours_elem) ]):
+						raise Exception("Conditional intervals are not contained in opening hours")
 
 		# Check conditional hours are not overlapping
 		condHours.sort(key = lambda x: self.intervalStringToMinutes(x[0]))
-
-		for i in range(len(condHours)):
-			ch = condHours[i]
-			if i > 0:
-				check = ch[0] if ch[0] < ch[1] else ch[1]
-				if condHours[i-1][1] > check:
-					raise Exception("Conditional intervals are not exclusive (they overlaps)")
+		for elem in condHours:
+			compare_all = [other_elem for other_elem in condHours if self._hourRangeOverlap(elem,other_elem)]
+			if compare_all:
+				raise Exception("Conditional intervals are not exclusive (they overlaps)")
 
 		ohHoursWithoutConds = []
 

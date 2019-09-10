@@ -780,6 +780,51 @@ class MainTest(unittest.TestCase):
 		self.assertEqual(result, expected)
 
 	#
+	# _hourRangeOverlap
+	#
+	def test_overlap_is_False_if_disjoint(self):
+		first = [ "07:00", "09:30" ]
+		second = [ "16:30", "19:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = False
+		self.assertEqual(result, expected)
+
+	def test_overlap_is_False_if_juxting(self):
+		first = [ "05:00", "10:00" ]
+		second = [ "10:00", "17:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = False
+		self.assertEqual(result, expected)
+
+	def test_overlap_is_False_if_disjoint_and_over_midnight(self):
+		first = [ "05:00", "10:00" ]
+		second = [ "19:00", "02:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = False
+		self.assertEqual(result, expected)
+
+	def test_overlap_is_True(self):
+		first = [ "05:00", "17:00" ]
+		second = [ "15:00", "17:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = True
+		self.assertEqual(result, expected)
+
+	def test_overlap_is_True_with_over_midnight(self):
+		first = [ "05:00", "17:00" ]
+		second = [ "16:00", "02:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = True
+		self.assertEqual(result, expected)
+
+	def test_overlap_is_True_with_both_over_midnight(self):
+		first = [ "15:00", "02:00" ]
+		second = [ "16:00", "03:00" ]
+		result = Main()._hourRangeOverlap(first, second)
+		expected = True
+		self.assertEqual(result, expected)
+
+	#
 	# _hourRangeWithin
 	#
 	def test_is_True_if_smaller_inside_wider(self):
@@ -959,7 +1004,20 @@ class MainTest(unittest.TestCase):
 		interval = 10;
 		condIntervals = { "17:00-19:30": 15, "23:30-03:00": 60 };
 
-		self.assertRaises(Exception, Main()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		expected = { "17:00-19:30": 15,"19:30-23:30": 10, "23:30-03:00": 60 }
+
+		self.assertEqual(result, expected)
+
+	def test_works_with_opening_hours_going_over_midnight(self):
+		ohRanges = ["17:00-03:00"];
+		interval = 10;
+		condIntervals = { "17:00-19:30": 15 };
+
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		expected = { "17:00-19:30": 15,"19:30-03:00": 10 }
+
+		self.assertEqual(result, expected)
 
 	def test_fails_with_conditional_intervals_not_exclusive(self):
 		ohRanges = ["03:00-20:00"];
