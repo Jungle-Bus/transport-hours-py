@@ -324,14 +324,19 @@ class Main:
 			raise Exception("Conditional intervals are not contained in opening hours")
 
 		# Check conditional hours are not overlapping
+		goneOverMidnight = False
 		condHours.sort(key = lambda x: self.intervalStringToMinutes(x[0]))
 
 		for i in range(len(condHours)):
 			ch = condHours[i]
-			if i > 0:
-				check = ch[0] if ch[0] < ch[1] else ch[1]
-				if condHours[i-1][1] > check:
+			if not goneOverMidnight:
+				if ch[0] > ch[1]:
+					goneOverMidnight = True
+
+				if i > 0 and condHours[i-1][1] > ch[0]:
 					raise Exception("Conditional intervals are not exclusive (they overlaps)")
+			else:
+				raise Exception("Conditional intervals are not exclusive (they overlaps)")
 
 		ohHoursWithoutConds = []
 

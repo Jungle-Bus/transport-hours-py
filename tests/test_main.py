@@ -314,6 +314,79 @@ class MainTest(unittest.TestCase):
 		};
 		self.assertEqual(result, expected)
 
+	def test_handles_over_midnight(self):
+		tags = {
+			"interval": "30",
+			"interval:conditional": "15 @ (Mo-Fr 05:00-09:00,16:00-20:00; Su 15:00-18:00); 60 @ (Mo-Fr 20:00-22:00; Sa 05:00-10:00,20:00-22:00; Su 10:00-15:00,18:00-22:00); 90 @ (Mo-Fr 22:00-03:00)",
+			"opening_hours": "Mo-Fr 05:00-03:00; Sa 05:00-22:00; Su 07:00-22:00; PH off"
+		}
+		result = Main().tagsToHoursObject(tags)
+		expected = {
+			"opens": {
+				"mo": ["05:00-03:00"],
+				"tu": ["05:00-03:00"],
+				"we": ["05:00-03:00"],
+				"th": ["05:00-03:00"],
+				"fr": ["05:00-03:00"],
+				"sa": ["05:00-22:00"],
+				"su": ["07:00-22:00"],
+				"ph": []
+			},
+			"defaultInterval": 30,
+			"otherIntervals": [
+				{
+					"interval": 15,
+					"applies": {
+						"mo": ["05:00-09:00", "16:00-20:00"],
+						"tu": ["05:00-09:00", "16:00-20:00"],
+						"we": ["05:00-09:00", "16:00-20:00"],
+						"th": ["05:00-09:00", "16:00-20:00"],
+						"fr": ["05:00-09:00", "16:00-20:00"],
+						"sa": [],
+						"su": ["15:00-18:00"],
+						"ph": []
+					}
+				},
+				{
+					"interval": 60,
+					"applies": {
+						"mo": ["20:00-22:00"],
+						"tu": ["20:00-22:00"],
+						"we": ["20:00-22:00"],
+						"th": ["20:00-22:00"],
+						"fr": ["20:00-22:00"],
+						"sa": ["05:00-10:00", "20:00-22:00"],
+						"su": ["10:00-15:00", "18:00-22:00"],
+						"ph": []
+					}
+				},
+				{
+					"interval": 90,
+					"applies": {
+						"mo": ["22:00-03:00"],
+						"tu": ["22:00-03:00"],
+						"we": ["22:00-03:00"],
+						"th": ["22:00-03:00"],
+						"fr": ["22:00-03:00"],
+						"sa": [],
+						"su": [],
+						"ph": []
+					}
+				}
+			],
+			"otherIntervalsByDays": [
+				{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "16:00-20:00": 15, "20:00-22:00": 60, "22:00-03:00": 90 } },
+				{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "20:00-22:00": 60 } },
+				{ "days": [ "su" ], "intervals": { "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 } }
+			],
+			"allComputedIntervals": [
+				{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 60, "22:00-03:00": 90 } },
+				{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "10:00-20:00": 30, "20:00-22:00": 60 } },
+				{ "days": [ "su" ], "intervals": { "07:00-10:00": 30, "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 } }
+			]
+		}
+		self.assertEqual(result, expected)
+
 	def test_works_opening_hours_having_PH_same_rest_week(self):
 		tags = {
 			"interval": "30",
@@ -756,7 +829,7 @@ class MainTest(unittest.TestCase):
 
 		self.assertEqual(result, expected)
 
-	def test_fixes_bug1(self):
+	def test_computeAllIntervals_fixes_bug1(self):
 		interval = 30
 		openingHours = {
 			"mo": ["05:00-22:00"],
@@ -775,6 +848,33 @@ class MainTest(unittest.TestCase):
 
 		expected = [
 			{ "days": [ "mo" ], "intervals": { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 60 } }
+		]
+
+		self.assertEqual(result, expected)
+
+	def test_computeAllIntervals_works_over_midnight(self):
+		interval = 30
+		openingHours = {
+			"mo": ["05:00-03:00"],
+			"tu": ["05:00-03:00"],
+			"we": ["05:00-03:00"],
+			"th": ["05:00-03:00"],
+			"fr": ["05:00-03:00"],
+			"sa": ["05:00-22:00"],
+			"su": ["07:00-22:00"],
+			"ph": []
+		}
+		intervalCondByDay = [
+			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "16:00-20:00": 15, "20:00-22:00": 60, "22:00-03:00": 90 } },
+			{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "20:00-22:00": 60 } },
+			{ "days": [ "su" ], "intervals": { "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 } }
+		]
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+
+		expected = [
+			{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 60, "22:00-03:00": 90 } },
+			{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "10:00-20:00": 30, "20:00-22:00": 60 } },
+			{ "days": [ "su" ], "intervals": { "07:00-10:00": 30, "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 } }
 		]
 
 		self.assertEqual(result, expected)
@@ -959,7 +1059,10 @@ class MainTest(unittest.TestCase):
 		interval = 10;
 		condIntervals = { "17:00-19:30": 15, "23:30-03:00": 60 };
 
-		self.assertRaises(Exception, Main()._mergeIntervalsSingleDay, ohRanges, interval, condIntervals)
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
+		expected = { "17:00-19:30": 15, "19:30-23:30": 10, "23:30-03:00": 60 }
+
+		self.assertEqual(result, expected)
 
 	def test_fails_with_conditional_intervals_not_exclusive(self):
 		ohRanges = ["03:00-20:00"];

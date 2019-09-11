@@ -2,7 +2,7 @@
 
 ## Main
 ```python
-Main(self, /, *args, **kwargs)
+Main(self)
 ```
 
 Main class of the library.
