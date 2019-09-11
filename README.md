@@ -44,6 +44,12 @@ make test
 
 # Generate documentation
 make docs
+
+
+# Following commands are optional, but can be useful sometimes
+
+# Run a single unit test
+python tests/test_main.py MainTest.test_name_of_the_test
 ```
 
 

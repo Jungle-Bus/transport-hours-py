@@ -111,7 +111,7 @@ class Main:
 
 	def intervalConditionalStringToObject(self, intervalConditional):
 		"""
-		Reads an interval:conditional=* tag from OpenStreetMap, and converts it into a JS object.
+		Reads an interval:conditional=* tag from OpenStreetMap, and converts it into a dict.
 
 		# param intervalConditional (string): The {@link https://wiki.openstreetmap.org/wiki/Key:interval|interval:conditional} tag
 		# return (dict[]): A list of rules, each having structure { interval: minutes (int), applies: {@link #gettable|opening hours table} }
@@ -295,6 +295,34 @@ class Main:
 				else:
 					return wider[0] <= smaller[0] and smaller[0] <= "24:00" and "00:00" <= smaller[1] and smaller[1] <= wider[1]
 
+	def _hourRangeOverlap(self, first_range, second_range):
+		"""
+		Check if an hour range overlap another one
+		"""
+		if first_range == second_range:
+			return False
+		else:
+			if not first_range[0] <= second_range[0]:
+				_ = first_range
+				first_range = second_range
+				second_range = _
+
+			# First one is during day
+			if first_range[0] <= first_range[1]:
+				return second_range[0] < first_range[1]
+
+			# First one is over midnight
+			else:
+				# Second one is during day (Either before or after midnight)
+				if second_range[0] <= second_range[1]:
+					if first_range[0] <= second_range[0] and first_range[0] <= second_range[1]:
+						return True
+					else:
+						return False
+				# Second one is over midnight
+				else:
+					return True
+
 	def _mergeIntervalsSingleDay(self, hours, interval, condIntervals):
 		"""
 		Add default interval within opening hours to conditional intervals
@@ -304,24 +332,9 @@ class Main:
 		condHours = hourRangeToArr(condIntervals)
 
 		# Check all conditional hours belong into opening hours
-		invalidCondHours = list(condHours)
-		i = 0
-		while i < len(invalidCondHours):
-			ch = invalidCondHours[i]
-			foundOhHours = False
-
-			for ohh in ohHours:
-				if self._hourRangeWithin(ohh, ch):
-					foundOhHours = True
-					break
-
-			if foundOhHours:
-				del invalidCondHours[i]
-			else:
-				i += 1
-
-		if len(invalidCondHours) > 0:
-			raise Exception("Conditional intervals are not contained in opening hours")
+		for condHours_elem in condHours:
+				if not any([ohh for ohh in ohHours if self._hourRangeWithin(ohh, condHours_elem) ]):
+						raise Exception("Conditional intervals are not contained in opening hours")
 
 		# Check conditional hours are not overlapping
 		goneOverMidnight = False
@@ -333,10 +346,11 @@ class Main:
 				if ch[0] > ch[1]:
 					goneOverMidnight = True
 
-				if i > 0 and condHours[i-1][1] > ch[0]:
-					raise Exception("Conditional intervals are not exclusive (they overlaps)")
+				for j in range(i):
+					if self._hourRangeOverlap(ch, condHours[j]):
+						raise Exception("Conditional intervals are not exclusive (they overlaps)")
 			else:
-				raise Exception("Conditional intervals are not exclusive (they overlaps)")
+				raise Exception("Conditional intervals are not exclusive (several intervals after midnight)")
 
 		ohHoursWithoutConds = []
 
@@ -357,9 +371,27 @@ class Main:
 					holes.append(thisCondHours[i-1][1])
 					holes.append(ch[0])
 
-				if isLast and ch[1] < ohh[1]:
-					holes.append(ch[1])
-					holes.append(ohh[1])
+				if isLast:
+					appendLast = False
+
+					# opening hours before midnight
+					if ohh[0] < ohh[1]:
+						if ch[1] < ohh[1]:
+							appendLast = True
+					# opening hours going after midnight
+					else:
+						# current range before midnight
+						if ch[0] < ch[1]:
+							appendLast = True
+						# current range going through midnight
+						else:
+							# Current range ending before opening hour end
+							if ch[1] < ohh[1]:
+								appendLast = True
+
+					if appendLast:
+						holes.append(ch[1])
+						holes.append(ohh[1])
 
 			ohHoursWithoutConds += [ holes[i-1]+"-"+holes[i] for i in range(len(holes)) if i % 2 == 1 ]
 
