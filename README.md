@@ -9,7 +9,11 @@ TransportHours is a Python (2.7+) library for easy reading/writing of [public tr
 
 ### From pip
 
-TODO
+Just run the following command in your development environment :
+
+```bash
+pip install transporthours
+```
 
 ### Using this repository
 
@@ -50,6 +54,31 @@ make docs
 
 # Run a single unit test
 python tests/test_main.py MainTest.test_name_of_the_test
+```
+
+### Publish on PyPI
+
+```bash
+# Put your credentials in .pypirc (only first time you want to publish)
+vim ~/.pypirc
+
+# Install Twine (only first time you want to publish
+pip install twine
+
+# Be sure to have updated package version number
+vim setup.py
+
+# Build archives
+python setup.py sdist bdist_wheel
+
+# Check builds
+twine check dist/*
+
+# Test upload on TestPyPI
+twine upload dist/* -r testpypi
+
+# Real upload on PyPI
+twine upload dist/* -r pypi
 ```
 
 
