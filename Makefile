@@ -8,3 +8,8 @@ test:
 
 docs:
 	pydocmd simple transporthours.main++ transporthours.openinghoursparser++ > API.md
+
+clean:
+	rm -rf build/
+	rm -rf dist/
+	rm -rf transporthours.egg-info/
