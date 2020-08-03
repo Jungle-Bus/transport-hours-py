@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 
+## 0.0.3 - 2020-08-03
+
+### Fixed
+* Parsing of conditional intervals over midnight
+
+
 ## 0.0.2 - 2019-09-17
 
 ### Added

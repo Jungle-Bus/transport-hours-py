@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from transporthours.main import Main
+from collections import OrderedDict
 import unittest
 
 class MainTest(unittest.TestCase):
@@ -383,6 +384,49 @@ class MainTest(unittest.TestCase):
 				{ "days": [ "mo", "tu", "we", "th", "fr" ], "intervals": { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 60, "22:00-03:00": 90 } },
 				{ "days": [ "sa" ], "intervals": { "05:00-10:00": 60, "10:00-20:00": 30, "20:00-22:00": 60 } },
 				{ "days": [ "su" ], "intervals": { "07:00-10:00": 30, "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 } }
+			]
+		}
+		self.assertEqual(result, expected)
+
+	def test_handles_over_midnight_2(self):
+		tags = {
+			"interval": "35",
+			"interval:conditional": "60 @ (Mo-Su,PH 01:20-03:20)",
+			"opening_hours": "Mo-Su,PH 21:50-06:55"
+		}
+		result = Main().tagsToHoursObject(tags)
+		expected = {
+			"opens": {
+				"mo": ["21:50-06:55"],
+				"tu": ["21:50-06:55"],
+				"we": ["21:50-06:55"],
+				"th": ["21:50-06:55"],
+				"fr": ["21:50-06:55"],
+				"sa": ["21:50-06:55"],
+				"su": ["21:50-06:55"],
+				"ph": ["21:50-06:55"]
+			},
+			"defaultInterval": 35,
+			"otherIntervals": [
+				{
+					"interval": 60,
+					"applies": {
+						"mo": ["01:20-03:20"],
+						"tu": ["01:20-03:20"],
+						"we": ["01:20-03:20"],
+						"th": ["01:20-03:20"],
+						"fr": ["01:20-03:20"],
+						"sa": ["01:20-03:20"],
+						"su": ["01:20-03:20"],
+						"ph": ["01:20-03:20"]
+					}
+				}
+			],
+			"otherIntervalsByDays": [
+				{ "days": [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ], "intervals": { "01:20-03:20": 60 } }
+			],
+			"allComputedIntervals": [
+				{ "days": [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ], "intervals": { "21:50-01:20": 35, "01:20-03:20": 60, "03:20-06:55": 35 } }
 			]
 		}
 		self.assertEqual(result, expected)
@@ -879,6 +923,29 @@ class MainTest(unittest.TestCase):
 
 		self.assertEqual(result, expected)
 
+	def test_computeAllIntervals_works_over_midnight_2(self):
+		interval = 30
+		openingHours = {
+			"mo": ["21:50-06:55"],
+			"tu": ["21:50-06:55"],
+			"we": ["21:50-06:55"],
+			"th": ["21:50-06:55"],
+			"fr": ["21:50-06:55"],
+			"sa": ["21:50-06:55"],
+			"su": ["21:50-06:55"],
+			"ph": ["21:50-06:55"]
+		}
+		intervalCondByDay = [
+			{ "days": [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ], "intervals": { "01:20-03:20": 60 } }
+		]
+		result = Main()._computeAllIntervals(openingHours, interval, intervalCondByDay)
+
+		expected = [
+			{ "days": [ "mo", "tu", "we", "th", "fr", "sa", "su", "ph" ], "intervals": { "21:50-01:20": 30, "01:20-03:20": 60, "03:20-06:55": 30 } }
+		]
+
+		self.assertEqual(result, expected)
+
 	#
 	# _hourRangeOverlap
 	#
@@ -976,13 +1043,6 @@ class MainTest(unittest.TestCase):
 		expected = True
 		self.assertEqual(result, expected)
 
-	def test_is_False_if_smaller_inside_wider_over_midnight_but_after_midnight(self):
-		wider = [ "20:00", "02:00" ]
-		smaller = [ "00:30", "01:00" ]
-		result = Main()._hourRangeWithin(wider, smaller)
-		expected = False
-		self.assertEqual(result, expected)
-
 	def test_is_False_if_smaller_outside_wider_over_midnight(self):
 		wider = [ "20:00", "02:00" ]
 		smaller = [ "19:00", "03:00" ]
@@ -1009,6 +1069,13 @@ class MainTest(unittest.TestCase):
 		smaller = [ "19:00", "21:00" ]
 		result = Main()._hourRangeWithin(wider, smaller)
 		expected = False
+		self.assertEqual(result, expected)
+
+	def test_hourRangeWithin_fixes_bug_2(self):
+		wider = [ "21:50", "06:55" ]
+		smaller = [ "01:20", "03:20" ]
+		result = Main()._hourRangeWithin(wider, smaller)
+		expected = True
 		self.assertEqual(result, expected)
 
 
@@ -1102,7 +1169,7 @@ class MainTest(unittest.TestCase):
 	def test_mergeIntervalsSingleDay_works_with_conditional_intervals_going_over_midnight(self):
 		ohRanges = ["17:00-03:00"];
 		interval = 10;
-		condIntervals = { "17:00-19:30": 15, "23:30-03:00": 60 };
+		condIntervals = OrderedDict([("17:00-19:30", 15), ("23:30-03:00", 60)]);
 
 		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals)
 		expected = { "17:00-19:30": 15, "19:30-23:30": 10, "23:30-03:00": 60 }
@@ -1151,6 +1218,39 @@ class MainTest(unittest.TestCase):
 		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals);
 
 		expected = { "05:00-09:00": 15, "09:00-16:00": 30, "16:00-20:00": 15, "20:00-22:00": 60 };
+
+		self.assertEqual(result, expected)
+
+	def test_mergeIntervalsSingleDay_fixes_bug_2_0(self):
+		ohRanges = ["21:50-06:55"];
+		interval = 30;
+		condIntervals = { "01:20-03:20": 60 };
+
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals);
+
+		expected = { "21:50-01:20": 30, "01:20-03:20": 60, "03:20-06:55": 30 };
+
+		self.assertEqual(result, expected)
+
+	def test_mergeIntervalsSingleDay_fixes_bug_2_1(self):
+		ohRanges = ["21:50-06:55"];
+		interval = 30;
+		condIntervals = { "22:00-23:00": 45, "01:20-03:20": 60 };
+
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals);
+
+		expected = { "21:50-22:00": 30, "22:00-23:00": 45, "23:00-01:20": 30, "01:20-03:20": 60, "03:20-06:55": 30 };
+
+		self.assertEqual(result, expected)
+
+	def test_mergeIntervalsSingleDay_fixes_bug_2_2(self):
+		ohRanges = ["07:00-22:00"];
+		interval = 30;
+		condIntervals = { "15:00-18:00": 15, "10:00-15:00": 60, "18:00-22:00": 60 };
+
+		result = Main()._mergeIntervalsSingleDay(ohRanges, interval, condIntervals);
+
+		expected = { "07:00-10:00": 30, "10:00-15:00": 60, "15:00-18:00": 15, "18:00-22:00": 60 };
 
 		self.assertEqual(result, expected)
 

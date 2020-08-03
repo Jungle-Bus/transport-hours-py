@@ -289,6 +289,9 @@ class Main:
 					# All after wider start
 					if wider[0] <= smaller[0] and wider[0] <= smaller[1]:
 						return True
+					# All before wider end
+					elif "00:00" <= smaller[0] and smaller[1] <= wider[1]:
+						return True
 					else:
 						return False
 				# Over midnight
@@ -338,16 +341,16 @@ class Main:
 
 		# Check conditional hours are not overlapping
 		goneOverMidnight = False
-		condHours.sort(key = lambda x: self.intervalStringToMinutes(x[0]))
+		sortedCondHours = sorted(list(condHours), cmp=lambda x,y: self.intervalStringToMinutes(x[0])-self.intervalStringToMinutes(y[0]))
 
-		for i in range(len(condHours)):
-			ch = condHours[i]
+		for i in range(len(sortedCondHours)):
+			ch = sortedCondHours[i]
 			if not goneOverMidnight:
 				if ch[0] > ch[1]:
 					goneOverMidnight = True
 
 				for j in range(i):
-					if self._hourRangeOverlap(ch, condHours[j]):
+					if self._hourRangeOverlap(ch, sortedCondHours[j]):
 						raise Exception("Conditional intervals are not exclusive (they overlaps)")
 			else:
 				raise Exception("Conditional intervals are not exclusive (several intervals after midnight)")
@@ -356,7 +359,8 @@ class Main:
 
 		for ohh in ohHours:
 			holes = []
-			thisCondHours = [ ch for ch in condHours if self._hourRangeWithin(ohh, ch) ]
+			ohhOverMidnight = ohh[0] > ohh[1]
+			thisCondHours = [ ch for ch in (condHours if ohhOverMidnight else sortedCondHours) if self._hourRangeWithin(ohh, ch) ]
 
 			for i in range(len(thisCondHours)):
 				ch = thisCondHours[i]
@@ -367,9 +371,10 @@ class Main:
 					holes.append(ohh[0])
 					holes.append(ch[0])
 
-				if not isFirst and thisCondHours[i-1][1] < ch[0]:
-					holes.append(thisCondHours[i-1][1])
-					holes.append(ch[0])
+				if not isFirst:
+					if thisCondHours[i-1][1] < ch[0] or (ohhOverMidnight and thisCondHours[i-1][1] > ch[0]):
+						holes.append(thisCondHours[i-1][1])
+						holes.append(ch[0])
 
 				if isLast:
 					appendLast = False
@@ -381,7 +386,13 @@ class Main:
 					# opening hours going after midnight
 					else:
 						# current range before midnight
-						if ch[0] < ch[1]:
+						if ch[0] < ch[1] and ohh[0] <= ch[0] and ch[1] <= "24:00":
+							appendLast = True
+						# current range after midnight
+						elif ch[0] < ch[1] and "00:00" <= ch[0] and ch[1] <= ohh[1]:
+							if isFirst:
+								holes.append(ohh[0])
+								holes.append(ch[0])
 							appendLast = True
 						# current range going through midnight
 						else:

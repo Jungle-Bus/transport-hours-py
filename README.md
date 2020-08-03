@@ -62,7 +62,7 @@ python tests/test_main.py MainTest.test_name_of_the_test
 # Put your credentials in .pypirc (only first time you want to publish)
 vim ~/.pypirc
 
-# Install Twine (only first time you want to publish
+# Install Twine (only first time you want to publish)
 pip install twine
 
 # Be sure to have updated package version number

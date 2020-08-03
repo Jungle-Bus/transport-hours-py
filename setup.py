@@ -8,7 +8,7 @@ with open('README.md') as f:
 
 setup(
     name='transporthours',
-    version='0.0.2',
+    version='0.0.3',
     description='Package for handling public transport routes opening hours from OpenStreetMap',
     long_description_content_type='text/markdown',
     long_description=readme,
