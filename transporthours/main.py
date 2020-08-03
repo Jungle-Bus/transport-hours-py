@@ -341,7 +341,8 @@ class Main:
 
 		# Check conditional hours are not overlapping
 		goneOverMidnight = False
-		sortedCondHours = sorted(list(condHours), cmp=lambda x,y: self.intervalStringToMinutes(x[0])-self.intervalStringToMinutes(y[0]))
+		sortedCondHours = condHours[:]
+		sortedCondHours.sort(key=lambda x: self.intervalStringToMinutes(x[0]))
 
 		for i in range(len(sortedCondHours)):
 			ch = sortedCondHours[i]
