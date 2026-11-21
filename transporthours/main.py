@@ -17,7 +17,7 @@ class Main:
 	def tagsToGtfs(self, tags):
 		"""
 		Convert OpenStreetMap tags into a GTFS-like format (list of dict having format { eachWeekDay: True/False, start_time: string, end_time: string, headway: int }.
-		Parsed tags are : interval=\*, opening_hours=\* and interval:conditional=\*
+		Parsed tags are : interval=\\*, opening_hours=\\* and interval:conditional=\\*
 
 		# param tags (dict): OpenStreetMap tags
 		# return dict[]: list of dictionaries, each one representing a line of GTFS hours CSV file
@@ -63,7 +63,7 @@ class Main:
 	def tagsToHoursObject(self, tags):
 		"""
 		Converts OpenStreetMap tags into a ready-to-use object representing the hours of the public transport line.
-		Parsed tags are : interval=\*, opening_hours=\* and interval:conditional=\*
+		Parsed tags are : interval=\\*, opening_hours=\\* and interval:conditional=\\*
 
 		# param tags (dict): The list of tags from OpenStreetMap
 		# return dict: The hours of the line, with structure { opens: object in format given by #OpeningHoursParser.gettable(), defaultInterval: minutes (int), otherIntervals: interval rules object, otherIntervalsByDays: list of interval by days (structure: { days: string[], intervals: { hoursRange: interval } }), allComputedIntervals: same as otherIntervalsByDays but taking also default interval and opening_hours }. Each field can also have value "unset" if no tag is defined, or "invalid" if tag can't be read.
@@ -134,7 +134,7 @@ class Main:
 				scid = semicolons[0]
 				part = intervalConditional[cursor:scid]
 
-				if re.search("^[^\(\)]+$", part) or re.search("\(.*\)", part):
+				if re.search(r"^[^\(\)]+$", part) or re.search(r"\(.*\)", part):
 					stack.append(part)
 					cursor = scid+1
 
@@ -163,7 +163,7 @@ class Main:
 		result['interval'] = self.intervalStringToMinutes(parts[0])
 
 		# Read opening hours
-		if re.search("^\(.*\)$", parts[1]):
+		if re.search(r"^\(.*\)$", parts[1]):
 			parts[1] = parts[1][1:len(parts[1])-1]
 
 		result['applies'] = OpeningHoursParser(parts[1]).getTable()
@@ -425,17 +425,17 @@ class Main:
 		interval = interval.strip()
 
 		# hh:mm:ss
-		if re.search("^\d{1,2}:\d{2}:\d{2}$", interval):
+		if re.search(r"^\d{1,2}:\d{2}:\d{2}$", interval):
 			parts = [ int(t) for t in interval.split(":") ]
 			return parts[0] * 60 + parts[1] + parts[2] / 60.0
 
 		# hh:mm
-		elif re.search("^\d{1,2}:\d{2}$", interval):
+		elif re.search(r"^\d{1,2}:\d{2}$", interval):
 			parts = [ int(t) for t in interval.split(":") ]
 			return parts[0] * 60 + parts[1]
 
 		# mm
-		elif re.search("^\d+$", interval):
+		elif re.search(r"^\d+$", interval):
 			return int(interval)
 
 		# invalid
