@@ -65,7 +65,7 @@ class OpeningHoursParser:
 		if part == "24/7":
 			part = "mo-su 00:00-24:00"
 
-		segments = re.compile("\ |\,").split(part)
+		segments = re.compile(r"\ |\,").split(part)
 
 		tempData = {}
 		days = []
@@ -122,7 +122,7 @@ class OpeningHoursParser:
 		days = []
 		softparts = part.split(',')
 		for part in softparts:
-			rangecount = len(re.findall("\-", part))
+			rangecount = len(re.findall(r"\-", part))
 			if rangecount == 0:
 				days.append(part)
 			else:
@@ -131,9 +131,9 @@ class OpeningHoursParser:
 		return days
 
 	def _cleanTime(self, time):
-		if re.match("^[0-9]:[0-9]{2}", time):
+		if re.match(r"^[0-9]:[0-9]{2}", time):
 			time = "0"+time
-		if re.match("^[0-9]{2}:[0-9]{2}\-[0-9]:[0-9]{2}", time):
+		if re.match(r"^[0-9]{2}:[0-9]{2}\-[0-9]:[0-9]{2}", time):
 			time = time[0:6]+"0"+time[6:]
 		return time
 
@@ -201,13 +201,13 @@ class OpeningHoursParser:
 		Check if string is time range
 		"""
 		# e.g. 09:00+
-		if re.search("[0-9]{1,2}:[0-9]{2}\+", inp):
+		if re.search(r"[0-9]{1,2}:[0-9]{2}\+", inp):
 			return True
 		# e.g. 08:00-12:00
-		if re.search("[0-9]{1,2}:[0-9]{2}\-[0-9]{1,2}:[0-9]{2}", inp):
+		if re.search(r"[0-9]{1,2}:[0-9]{2}\-[0-9]{1,2}:[0-9]{2}", inp):
 			return True
 		# off
-		if re.search("off", inp):
+		if re.search(r"off", inp):
 			return True
 		return False
 
@@ -216,7 +216,7 @@ class OpeningHoursParser:
 		check if string is day or dayrange
 		"""
 		days = ["mo", "tu", "we", "th", "fr", "sa", "su", "ph"]
-		if re.search("\-", inp):
+		if re.search(r"\-", inp):
 			rangelements = inp.split('-')
 			if rangelements[0] in days and rangelements[1] in days:
 				return True
