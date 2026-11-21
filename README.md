@@ -2,7 +2,7 @@
 
 ## Read-me
 
-TransportHours is a Python (2.7+) library for easy reading/writing of [public transport hours](https://wiki.openstreetmap.org/wiki/Key:interval) present in OpenStreetMap. It interprets string values from OSM tags, and also converts your objects into string values to go back into OSM.
+TransportHours is a Python (3.12+) library for easy reading/writing of [public transport hours](https://wiki.openstreetmap.org/wiki/Key:interval) present in OpenStreetMap. It interprets string values from OSM tags, and also converts your objects into string values to go back into OSM.
 
 
 ## Install
@@ -36,8 +36,8 @@ For more details about available functions, see [API documentation](API.md).
 For start developing on this library, run the following commands :
 
 ```bash
-# Prepare python 2.7 environment
-virtualenv env -p /usr/bin/python2.7
+# Prepare python 3.12 environment
+python3.12 -m venv env
 source ./env/bin/activate
 
 # Install dependencies
