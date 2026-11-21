@@ -1,8 +1,0 @@
-language: python
-python:
-  - "3.12"
-install:
-  - make deps
-script:
-  - make test
-  - python example.py
